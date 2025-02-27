@@ -1,0 +1,22 @@
+<mujocoinclude>
+    <compiler angle="radian" meshdir="../meshes/"/>
+    <asset>
+        <mesh name="trunk" file="trunk.stl" />
+        <mesh name="hip" file="hip.stl" />
+        <mesh name="thigh_mirror" file="thigh_mirror.stl" />
+        <mesh name="calf" file="calf.stl" />
+        <mesh name="thigh" file="thigh.stl" />
+
+        <texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2"
+        width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>
+        <texture name="texplane2" type="2d" builtin="checker" rgb1="1 0.3137 0.1843" rgb2="0.0 0.30196 0.38039"
+        width="512" height="512" mark="cross" markrgb=".8 .8 .8"/>
+
+        <material name="matplane" reflectance="0." texture="texplane" texrepeat="1 1" texuniform="true"/>
+        <material name="matplane2" reflectance="0.1" texture="texplane2" texrepeat="1 1" texuniform="true"/>
+
+        <hfield name='hf0' nrow='200' ncol='200' size="5 5 0.2 .1"/>
+        <hfield file="../terrain/uneven.png" name="hf1" ncol="0" nrow="0" size="50 50 0.35 0.1" />  
+    </asset>
+
+</mujocoinclude>
