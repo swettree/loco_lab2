@@ -104,7 +104,7 @@ class CommandsCfg:
         debug_vis=False,  # No debug visualization needed
         ranges=mdp.UniformGaitCommandCfgQuad.Ranges(
             frequencies=(1.5, 2.5),  # Gait frequency range [Hz]
-            durations=(0.5, 0.5),  # Contact duration range [0-1]，原0.75
+            durations=(0.25, 0.25),  # Contact duration range [0-1]，原0.75
             offsets2=(0.5, 0.5),  # Phase offset2 range [0-1]
             offsets3=(0.5, 0.5),  # Phase offset3 range [0-1]
             offsets4=(0.0, 0.0),  # Phase offset4 range [0-1]
@@ -437,8 +437,9 @@ class RewardsCfg:
         weight=-2.0,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="trunk"),
+            # "asset_feet_cfg": SceneEntityCfg("robot", body_names=".*_foot"),
             "sensor_cfg": SceneEntityCfg("height_scanner"),
-            "target_height": 0.5,
+            "target_height": 0.40,
         },
     )
 
@@ -457,7 +458,7 @@ class RewardsCfg:
 
     pen_joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.005,
+        weight=-0.15, # 0.005
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_joint"])},
     )
     # pen_stand_still_when_zero_command = RewTerm(
@@ -477,16 +478,20 @@ class RewardsCfg:
     # Gait reward
     pen_gait_reward = RewTerm(
         func=mdp.GaitRewardQuad,
-        weight=1.0,
+        weight=1.5,# 1.0
         params={
             "tracking_contacts_shaped_force": -1.0,
             "tracking_contacts_shaped_vel": -1.0,
+            "tracking_contacts_shaped_height": -1.0,
             "gait_force_sigma": 150.0,
-            "gait_vel_sigma": 0.30,
+            "gait_vel_sigma": 10,
+            "gait_height_target": 0.25,
+            "gait_height_sigma": 10,
             "kappa_gait_probs": 0.05,
             "command_name": "gait_command",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_foot"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_foot"),
+            "asset_base_cfg": SceneEntityCfg("robot", body_names="trunk"),
         },
     )
 
@@ -498,7 +503,7 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=["trunk",".*_shoulder", ".*_thigh", "base"]), "threshold": 1.0},
+        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=["trunk", ".*_thigh"]), "threshold": 1.0},
     )
 
 

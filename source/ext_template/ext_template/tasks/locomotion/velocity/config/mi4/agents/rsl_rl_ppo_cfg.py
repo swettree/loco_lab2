@@ -9,7 +9,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 @configclass
 class MI4RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 5000
+    max_iterations = 8000
     save_interval = 50
     experiment_name = "mi4_rough"
     empirical_normalization = False

@@ -6,7 +6,7 @@ import os
 
 
 current_dir = os.path.dirname(__file__)
-MI4_USD_PATH = os.path.join(current_dir, "./MI/mi4/USD/mi4.usd")
+MI4_USD_PATH = os.path.join(current_dir, "./MI/USD/mi4.usd")
 
 MI4_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(

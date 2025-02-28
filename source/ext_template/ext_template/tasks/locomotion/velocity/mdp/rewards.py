@@ -84,6 +84,7 @@ def base_height_rough_l2(
     env: ManagerBasedRLEnv,
     target_height: float,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    # asset_feet_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     sensor_cfg: SceneEntityCfg | None = None,
 ) -> torch.Tensor:
     """Penalize asset height from its target using L2 squared kernel.
@@ -94,18 +95,25 @@ def base_height_rough_l2(
     """
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject = env.scene[asset_cfg.name]
+    # asset_feet: Articulation = env.scene[asset_feet_cfg.name]
+    # feet_positions = asset_feet.data.body_pos_w[:, asset_feet_cfg.body_ids, :]
     if sensor_cfg is not None:
         sensor: RayCaster = env.scene[sensor_cfg.name]
         # Adjust the target height using the sensor data
         adjusted_target_height = (target_height + torch.mean(sensor.data.ray_hits_w[..., 2], dim=1))
-        # print(sensor.data.pos_w[:, 2].unsqueeze(1)[0])
-        # print(torch.mean(sensor.data.ray_hits_w[..., 2], dim=1)[0])
-        # print(asset.data.root_pos_w[:, 2][0])
+        # print("sensor pos: ",sensor.data.pos_w[:, 2].unsqueeze(1)[0])
+        # print("ray hits pos: ",torch.mean(sensor.data.ray_hits_w[..., 2], dim=1)[0])
+        # print("body pos: ",asset.data.root_pos_w[:, 2][0])
+        # print("feet pos: ",feet_positions[0])
+        # print((asset.data.root_pos_w[:, 2] - adjusted_target_height)[0])
+
+
         # print("next")
     else:
         # Use the provided target height directly for flat terrain
         adjusted_target_height = target_height
     # Compute the L2 squared penalty
+    # print(abs(asset.data.root_pos_w[:, 2] - adjusted_target_height))
     return torch.square(abs(asset.data.root_pos_w[:, 2] - adjusted_target_height).clamp(min=0.0, max=1.0))
 
 
@@ -134,7 +142,6 @@ def stand_still_when_zero_command(
     diff_angle = asset.data.joint_pos[:, asset_cfg.joint_ids] - asset.data.default_joint_pos[:, asset_cfg.joint_ids]
     command = torch.norm(env.command_manager.get_command(command_name)[:, :2], dim=1) < 0.1
     return torch.sum(torch.abs(diff_angle), dim=1) * command
-
 
 
 
@@ -255,31 +262,40 @@ class GaitRewardQuad(ManagerTermBase):
 
         self.sensor_cfg = cfg.params["sensor_cfg"]
         self.asset_cfg = cfg.params["asset_cfg"]
+        self.asset_base_cfg = cfg.params["asset_base_cfg"]
 
         # extract the used quantities (to enable type-hinting)
         self.contact_sensor: ContactSensor = env.scene.sensors[self.sensor_cfg.name]
         self.asset: Articulation = env.scene[self.asset_cfg.name]
+        self.asset_base: Articulation = env.scene[self.asset_base_cfg.name]
 
         # Store configuration parameters
         self.force_scale = float(cfg.params["tracking_contacts_shaped_force"])
         self.vel_scale = float(cfg.params["tracking_contacts_shaped_vel"])
+        self.height_scale = float(cfg.params["tracking_contacts_shaped_height"])
         self.force_sigma = cfg.params["gait_force_sigma"]
         self.vel_sigma = cfg.params["gait_vel_sigma"]
+        self.height_target = cfg.params["gait_height_target"]
+        self.height_sigma = cfg.params["gait_height_sigma"]
         self.kappa_gait_probs = cfg.params["kappa_gait_probs"]
         self.command_name = cfg.params["command_name"]
         self.dt = env.step_dt
 
     def __call__(
         self,
-        env: ManagerBasedRLEnv,
+        env: ManagerBasedRtLEnv,
         tracking_contacts_shaped_force,
         tracking_contacts_shaped_vel,
+        tracking_contacts_shaped_height,
         gait_force_sigma,
         gait_vel_sigma,
+        gait_height_target,
+        gait_height_sigma,
         kappa_gait_probs,
         command_name,
         sensor_cfg,
         asset_cfg,
+        asset_base_cfg,
     ) -> torch.Tensor:
         """Compute the reward.
 
@@ -307,9 +323,23 @@ class GaitRewardQuad(ManagerTermBase):
         foot_velocities = torch.norm(self.asset.data.body_lin_vel_w[:, self.asset_cfg.body_ids, 0:2], dim=-1) # (num_envs, num_feet)
         # print("foot_velocities {}".format(self.asset.data.body_lin_vel_w[:, self.asset_cfg.body_ids, 0:2].shape))
         velocity_reward = self._compute_velocity_reward(foot_velocities, desired_contact_states)
+        
 
+        feet_positions = self.asset.data.body_pos_w[:, asset_cfg.body_ids, :] # (num_envs, num_feet, 3)
+
+        base_rotation = self.asset_base.data.root_link_quat_w[:, :] # (num_envs, 4)
+        base_positions = self.asset_base.data.root_link_pos_w[:, :] # (num_envs, 3)
+        num_envs = feet_positions.shape[0]
+        num_feet = feet_positions.shape[1]
+        cur_footpos_translated = feet_positions - base_positions.unsqueeze(1)
+        footpos_in_body_frame = torch.zeros(num_envs, num_feet, 3, device='cuda')
+        for i in range(num_feet):
+            footpos_in_body_frame[:, i, :] = math_utils.quat_rotate_inverse(base_rotation, cur_footpos_translated[:, i, :]) 
+
+        foots_error = footpos_in_body_frame[:, :, 2] - self.height_target
+        feet_height_reward = self._compute_foot_height_reward(foots_error, desired_contact_states)
         # Combine rewards
-        total_reward = force_reward + velocity_reward
+        total_reward = force_reward + velocity_reward + feet_height_reward
         return total_reward
 
     def compute_contact_targets(self, gait_params):
@@ -396,6 +426,21 @@ class GaitRewardQuad(ManagerTermBase):
 
         return (reward / velocities.shape[1]) * self.vel_scale
     
+    def _compute_foot_height_reward(self, foots_error: torch.Tensor, desired_contacts: torch.Tensor) -> torch.Tensor:
+        """Compute foot height-based reward component."""
+        reward = torch.zeros_like(foots_error[:, 0])
+        if self.height_scale < 0:  # Negative scale means penalize movement during contact
+            for i in range(foots_error.shape[1]):
+            
+                # print("i: {} forces[:, i] ** 2: {}".format(i, forces[:, i] ** 2))
+                # 摆动相位中的不需要的接触
+                reward += (1 - desired_contacts[:, i]) * (1 - torch.exp(-foots_error[:, i] ** 2 / self.height_sigma))
+        else:  # Positive scale means reward desired contact
+            for i in range(foots_error.shape[1]):
+                reward += (1 - desired_contacts[:, i]) * torch.exp(-foots_error[:, i] ** 2 / self.height_sigma)
+        return (reward / foots_error.shape[1]) * self.height_scale
+
+
 
 
 
@@ -557,3 +602,4 @@ class GaitRewardQuad_NoCommand(ManagerTermBase):
                 reward += desired_contacts[:, i] * torch.exp(-velocities[:, i] ** 2 / self.vel_sigma)
 
         return (reward / velocities.shape[1]) * self.vel_scale
+    

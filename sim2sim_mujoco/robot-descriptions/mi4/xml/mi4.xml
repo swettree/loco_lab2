@@ -16,9 +16,9 @@
       <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.913725 0.913725 0.847059 1" mesh="FL_hip" />
       <geom size="0.06 0.02" pos="0.07 0 0" quat="0.707388 0.706825 0 0" type="cylinder" rgba="1 1 1 1" />
       
-      <body name="FL_thigh_shoulder">
+      <!-- <body name="FL_thigh_shoulder">
         <geom size="0.041 0.016" type="cylinder" />
-      </body>
+      </body> -->
 
       <body name="FL_thigh" pos="0.0875 0.0395 0">
         <inertial pos="-0.010665 0.10447 -0.098926" quat="0.708539 -0.0111504 -0.0156263 0.705411" mass="2.525" diaginertia="0.027266 0.0254751 0.00236337" />
@@ -46,9 +46,9 @@
       <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.913725 0.913725 0.847059 1" mesh="FR_hip" />
       <geom size="0.06 0.02" pos="0.07 0 0" quat="0.707388 0.706825 0 0" type="cylinder" rgba="1 1 1 1" />
       
-      <body name="FR_thigh_shoulder">
+      <!-- <body name="FR_thigh_shoulder">
         <geom size="0.041 0.016" type="cylinder" />
-      </body>
+      </body> -->
 
       <body name="FR_thigh" pos="0.0758 -0.03 0">
         <inertial pos="-0.00586536 -0.100171 -0.0538048" quat="0.984411 -0.0980549 0.0189923 -0.144771" mass="4.60488" diaginertia="0.0644886 0.0630913 0.0109755" />
@@ -76,9 +76,9 @@
       <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.913725 0.913725 0.847059 1" mesh="RL_hip" />
       <geom size="0.06 0.02" pos="-0.07 0 0" quat="0.707388 0.706825 0 0" type="cylinder" rgba="1 1 1 1" />
       
-      <body name="RL_thigh_shoulder">
+      <!-- <body name="RL_thigh_shoulder">
         <geom size="0.041 0.016" type="cylinder" />
-      </body>
+      </body> -->
       
       <body name="RL_thigh" pos="-0.0875 0.0395 0">
         <inertial pos="-0.010665 0.10447 -0.098926" quat="0.708539 -0.0111504 -0.0156263 0.705411" mass="2.525" diaginertia="0.027266 0.0254751 0.00236337" />
@@ -106,9 +106,9 @@
       <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.913725 0.913725 0.847059 1" mesh="RR_hip" />
       <geom size="0.06 0.02" pos="-0.07 0 0" quat="0.707388 0.706825 0 0" type="cylinder" rgba="1 1 1 1" />
       
-      <body name="RR_thigh_shoulder">
+      <!-- <body name="RR_thigh_shoulder">
         <geom size="0.041 0.016" type="cylinder" />
-      </body>
+      </body> -->
       
       <body name="RR_thigh" pos="-0.0875 -0.0395 0">
         <inertial pos="-0.010416 -0.10536 -0.097844" quat="0.705331 -0.0151814 -0.0106578 0.708636" mass="2.5024" diaginertia="0.027275 0.0254618 0.00238407" />
