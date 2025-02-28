@@ -415,13 +415,13 @@
   </joint>
   <!-- this link is only for collision -->
   <link name="FR_thigh_shoulder">
-    <collision>
+    <!-- <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <!-- <cylinder length="0.032" radius="0.041"/> -->
+        <cylinder length="0.032" radius="0.041"/>
         <cylinder length="0.0" radius="0.0"/>
       </geometry>
-    </collision>
+    </collision> -->
   </link>
   <joint name="FR_thigh_joint" type="revolute">
     <origin rpy="0 0 0" xyz="0.0758 -0.03 0"/>
@@ -600,13 +600,13 @@
   </joint>
   <!-- this link is only for collision -->
   <link name="FL_thigh_shoulder">
-    <collision>
+    <!-- <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <!-- <cylinder length="0.032" radius="0.041"/> -->
+        <cylinder length="0.032" radius="0.041"/>
         <cylinder length="0.0" radius="0.0"/>
       </geometry>
-    </collision>
+    </collision> -->
   </link>
 
   <joint name="FL_thigh_joint" type="revolute">
@@ -789,13 +789,13 @@
   </joint>
   <!-- this link is only for collision -->
   <link name="RR_thigh_shoulder">
-    <collision>
+    <!-- <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <!-- <cylinder length="0.032" radius="0.041"/> -->
+        <cylinder length="0.032" radius="0.041"/>
         <cylinder length="0.0" radius="0.0"/>
       </geometry>
-    </collision>
+    </collision> -->
   </link>
 
   <joint name="RR_thigh_joint" type="revolute">
@@ -976,13 +976,13 @@
   </joint>
   <!-- this link is only for collision -->
   <link name="RL_thigh_shoulder">
-    <collision>
+    <!-- <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <!-- <cylinder length="0.032" radius="0.041"/> -->
+        <cylinder length="0.032" radius="0.041"/>
         <cylinder length="0.0" radius="0.0"/>
       </geometry>
-    </collision>
+    </collision> -->
   </link>
   <joint name="RL_thigh_joint" type="revolute">
     <origin rpy="0 0 0" xyz="-0.0875 0.0395 0"/>

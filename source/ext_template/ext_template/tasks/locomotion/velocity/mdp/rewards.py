@@ -80,6 +80,38 @@ def feet_air_time_positive_biped(
 
 
 
+def base_height_rough_l2(
+    env: ManagerBasedRLEnv,
+    target_height: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    sensor_cfg: SceneEntityCfg | None = None,
+) -> torch.Tensor:
+    """Penalize asset height from its target using L2 squared kernel.
+
+    Note:
+        For flat terrain, target height is in the world frame. For rough terrain,
+        sensor readings can adjust the target height to account for the terrain.
+    """
+    # extract the used quantities (to enable type-hinting)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    if sensor_cfg is not None:
+        sensor: RayCaster = env.scene[sensor_cfg.name]
+        # Adjust the target height using the sensor data
+        adjusted_target_height = (target_height + torch.mean(sensor.data.ray_hits_w[..., 2], dim=1))
+        # print(sensor.data.pos_w[:, 2].unsqueeze(1)[0])
+        # print(torch.mean(sensor.data.ray_hits_w[..., 2], dim=1)[0])
+        # print(asset.data.root_pos_w[:, 2][0])
+        # print("next")
+    else:
+        # Use the provided target height directly for flat terrain
+        adjusted_target_height = target_height
+    # Compute the L2 squared penalty
+    return torch.square(abs(asset.data.root_pos_w[:, 2] - adjusted_target_height).clamp(min=0.0, max=1.0))
+
+
+
+
+
 def joint_power(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
     """Reward joint_power"""
     # extract the used quantities (to enable type-hinting)
