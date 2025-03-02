@@ -117,7 +117,52 @@ def base_height_rough_l2(
     return torch.square(abs(asset.data.root_pos_w[:, 2] - adjusted_target_height).clamp(min=0.0, max=1.0))
 
 
+def base_height_rough_l2(
+    env: ManagerBasedRLEnv,
+    target_height: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    sensor_cfg: SceneEntityCfg | None = None,
+) -> torch.Tensor:
+    """Penalize asset height from its target using L2 squared kernel.
 
+    Note:
+        For flat terrain, target height is in the world frame. For rough terrain,
+        sensor readings can adjust the target height to account for the terrain.
+    """
+    # extract the used quantities (to enable type-hinting)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    if sensor_cfg is not None:
+        sensor: RayCaster = env.scene[sensor_cfg.name]
+        # Adjust the target height using the sensor data
+        ray_hits = sensor.data.ray_hits_w[..., 2]
+        if torch.isnan(ray_hits).any() or torch.isinf(ray_hits).any() or torch.max(torch.abs(ray_hits)) > 1e6:
+            adjusted_target_height = asset.data.root_link_pos_w[:, 2]
+        else:
+            adjusted_target_height = target_height + torch.mean(ray_hits, dim=1)
+    else:
+        # Use the provided target height directly for flat terrain
+        adjusted_target_height = target_height
+    # Compute the L2 squared penalty
+    return torch.square(asset.data.root_pos_w[:, 2] - adjusted_target_height)
+
+def feet_distance(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    """Penalize if the distance between feet is below a minimum threshold."""
+
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    feet_position_xy = asset.data.body_pos_w[:, asset_cfg.body_ids, 0:2] # (num_envs, num_feet, 2)
+
+    if feet_position_xy is None:
+        return torch.zeros(env.num_envs)
+
+    # feet distance on x-y plane
+    feet_distance_front = torch.norm(feet_position_xy[:, 0, :2] - feet_position_xy[:, 1, :2], dim=-1)
+    feet_distance_behind = torch.norm(feet_position_xy[:, 2, :2] - feet_position_xy[:, 3, :2], dim=-1)
+    feet_distance = torch.norm(torch.stack([feet_distance_front, feet_distance_behind], dim=1), dim=-1)  # (num_envs, 1)
+
+    return torch.clamp(0.45 - feet_distance, min=0.0)
 
 
 def joint_power(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
@@ -272,11 +317,11 @@ class GaitRewardQuad(ManagerTermBase):
         # Store configuration parameters
         self.force_scale = float(cfg.params["tracking_contacts_shaped_force"])
         self.vel_scale = float(cfg.params["tracking_contacts_shaped_vel"])
-        self.height_scale = float(cfg.params["tracking_contacts_shaped_height"])
+        # self.height_scale = float(cfg.params["tracking_contacts_shaped_height"])
         self.force_sigma = cfg.params["gait_force_sigma"]
         self.vel_sigma = cfg.params["gait_vel_sigma"]
-        self.height_target = cfg.params["gait_height_target"]
-        self.height_sigma = cfg.params["gait_height_sigma"]
+        # self.height_target = cfg.params["gait_height_target"]
+        # self.height_sigma = cfg.params["gait_height_sigma"]
         self.kappa_gait_probs = cfg.params["kappa_gait_probs"]
         self.command_name = cfg.params["command_name"]
         self.dt = env.step_dt
@@ -286,11 +331,11 @@ class GaitRewardQuad(ManagerTermBase):
         env: ManagerBasedRtLEnv,
         tracking_contacts_shaped_force,
         tracking_contacts_shaped_vel,
-        tracking_contacts_shaped_height,
+        # tracking_contacts_shaped_height,
         gait_force_sigma,
         gait_vel_sigma,
-        gait_height_target,
-        gait_height_sigma,
+        # gait_height_target,
+        # gait_height_sigma,
         kappa_gait_probs,
         command_name,
         sensor_cfg,
@@ -325,21 +370,23 @@ class GaitRewardQuad(ManagerTermBase):
         velocity_reward = self._compute_velocity_reward(foot_velocities, desired_contact_states)
         
 
-        feet_positions = self.asset.data.body_pos_w[:, asset_cfg.body_ids, :] # (num_envs, num_feet, 3)
+        # feet_positions = self.asset.data.body_pos_w[:, asset_cfg.body_ids, :] # (num_envs, num_feet, 3)
 
-        base_rotation = self.asset_base.data.root_link_quat_w[:, :] # (num_envs, 4)
-        base_positions = self.asset_base.data.root_link_pos_w[:, :] # (num_envs, 3)
-        num_envs = feet_positions.shape[0]
-        num_feet = feet_positions.shape[1]
-        cur_footpos_translated = feet_positions - base_positions.unsqueeze(1)
-        footpos_in_body_frame = torch.zeros(num_envs, num_feet, 3, device='cuda')
-        for i in range(num_feet):
-            footpos_in_body_frame[:, i, :] = math_utils.quat_rotate_inverse(base_rotation, cur_footpos_translated[:, i, :]) 
+        # base_rotation = self.asset_base.data.root_link_quat_w[:, :] # (num_envs, 4)
+        # base_positions = self.asset_base.data.root_link_pos_w[:, :] # (num_envs, 3)
+        # num_envs = feet_positions.shape[0]
+        # num_feet = feet_positions.shape[1]
+        # cur_footpos_translated = feet_positions - base_positions.unsqueeze(1)
+        # footpos_in_body_frame = torch.zeros(num_envs, num_feet, 3, device='cuda')
+        # for i in range(num_feet):
+        #     footpos_in_body_frame[:, i, :] = math_utils.quat_rotate_inverse(base_rotation, cur_footpos_translated[:, i, :]) 
 
-        foots_error = footpos_in_body_frame[:, :, 2] - self.height_target
-        feet_height_reward = self._compute_foot_height_reward(foots_error, desired_contact_states)
+        # print(footpos_in_body_frame[:, :, 2][0])
+        
+        # foots_error = footpos_in_body_frame[:, :, 2] - self.height_target
+        # feet_height_reward = self._compute_foot_height_reward(foots_error, desired_contact_states)
         # Combine rewards
-        total_reward = force_reward + velocity_reward + feet_height_reward
+        total_reward = force_reward + velocity_reward
         return total_reward
 
     def compute_contact_targets(self, gait_params):

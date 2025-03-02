@@ -17,6 +17,7 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.utils import configclass
+from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
 import ext_template.tasks.locomotion.velocity.mdp as mdp
@@ -48,8 +49,9 @@ class MySceneCfg(InteractiveSceneCfg):
             dynamic_friction=1.0,
         ),
         visual_material=sim_utils.MdlFileCfg(
-            mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
+            mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
             project_uvw=True,
+            texture_scale=(0.25, 0.25),
         ),
         debug_vis=False,
     )
@@ -57,22 +59,34 @@ class MySceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = MISSING
     # sensors
     height_scanner = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base",
+        prim_path="{ENV_REGEX_NS}/Robot/trunk",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
         attach_yaw_only=True,
         pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
+
+    height_scanner_base = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/trunk",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+        attach_yaw_only=True,
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.05, size=(0.1, 0.1)),
+        debug_vis=False,
+        mesh_prim_paths=["/World/ground"],
+    )
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
     # lights
-    light = AssetBaseCfg(
-        prim_path="/World/light",
-        spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
-    )
+    # light = AssetBaseCfg(
+    #     prim_path="/World/light",
+    #     spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
+    # )
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
-        spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
+        spawn=sim_utils.DomeLightCfg(
+            intensity=750.0,
+            texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",
+        ),
     )
 
 
@@ -104,7 +118,7 @@ class CommandsCfg:
         debug_vis=False,  # No debug visualization needed
         ranges=mdp.UniformGaitCommandCfgQuad.Ranges(
             frequencies=(1.5, 2.5),  # Gait frequency range [Hz]
-            durations=(0.25, 0.25),  # Contact duration range [0-1]，原0.75
+            durations=(0.3, 0.3),  # Contact duration range [0-1]，原0.75
             offsets2=(0.5, 0.5),  # Phase offset2 range [0-1]
             offsets3=(0.5, 0.5),  # Phase offset3 range [0-1]
             offsets4=(0.0, 0.0),  # Phase offset4 range [0-1]
@@ -115,7 +129,7 @@ class ActionsCfg:
     """Action specifications for the MDP."""
 
     joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.25, use_default_offset=True)
-    print([".*"])
+    # print([".*"])
 
 @configclass
 class ObservationsCfg:
@@ -290,8 +304,8 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-            "stiffness_distribution_params": (0.7, 1.3),
-            "damping_distribution_params": (0.7, 1.3),
+            "stiffness_distribution_params": (0.5, 2.0),
+            "damping_distribution_params": (0.5, 2.0),
             "operation": "scale",
             "distribution": "uniform",
         },
@@ -334,18 +348,12 @@ class EventCfg:
         params={
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
             "velocity_range": {
-                "x": (0.0, 0.0),   
-                "y": (0.0, 0.0),
-                "z": (0.0, 0.0),
-                "roll": (0.0, 0.0),
-                "pitch": (0.0, 0.0),
-                "yaw": (0.0, 0.0),
-                # "x": (-0.5, 0.5),
-                # "y": (-0.5, 0.5),
-                # "z": (-0.5, 0.5),
-                # "roll": (-0.5, 0.5),
-                # "pitch": (-0.5, 0.5),
-                # "yaw": (-0.5, 0.5),
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "z": (-0.5, 0.5),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
+                "yaw": (-0.5, 0.5),
             },
         },
     )
@@ -390,15 +398,11 @@ class RewardsCfg:
     rew_track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_exp, weight=5.0, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
     )
-    # rew_track_lin_vel_xy_exp = RewTerm(
-    #     func=mdp.track_lin_vel_xy_exp, weight=1.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
-    # )
+
     rew_track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_exp, weight=2.0, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
     )
-    # rew_track_ang_vel_z_exp = RewTerm(
-    #     func=mdp.track_ang_vel_z_exp, weight=0.75, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
-    # )
+
     # rew_feet_air_time = RewTerm(
     #     func=mdp.feet_air_time,
     #     weight=0.01,
@@ -422,11 +426,7 @@ class RewardsCfg:
     #     func=mdp.joint_vel_limits, weight=0.0, params={"asset_cfg": SceneEntityCfg("robot", joint_names=".*")}
     # )
     pen_joint_power = RewTerm(func=mdp.joint_power, weight=-2.0e-5)
-    # pen_joint_deviation_hip = RewTerm(
-    #     func=mdp.joint_deviation_l1,
-    #     weight=-0.005,
-    #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_joint"])},
-    # )
+
 
     pen_action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
     pen_action_smoothness = RewTerm(func=mdp.ActionSmoothnessPenalty, weight=-0.01)
@@ -434,12 +434,11 @@ class RewardsCfg:
 
     pen_base_height_l2 = RewTerm(
         func=mdp.base_height_rough_l2,
-        weight=-2.0,
+        weight=-1.0,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="trunk"),
-            # "asset_feet_cfg": SceneEntityCfg("robot", body_names=".*_foot"),
-            "sensor_cfg": SceneEntityCfg("height_scanner"),
-            "target_height": 0.40,
+            "sensor_cfg": SceneEntityCfg("height_scanner_base"),
+            "target_height": 0.50,
         },
     )
 
@@ -456,16 +455,11 @@ class RewardsCfg:
         weight=-200.0,
     )
 
-    pen_joint_deviation_hip = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-0.15, # 0.005
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_joint"])},
+    pen_feet_distance = RewTerm(
+        func=mdp.feet_distance,
+        weight = -100,
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=[".*_foot"])},
     )
-    # pen_stand_still_when_zero_command = RewTerm(
-    #     func=mdp.stand_still_when_zero_command,
-    #     weight=-0.5,
-    #     params={"command_name": "base_velocity"},
-    # )
 
     # pen_feet_clearance = RewTerm(
     #     func=mdp.feet_clearance,
@@ -482,11 +476,11 @@ class RewardsCfg:
         params={
             "tracking_contacts_shaped_force": -1.0,
             "tracking_contacts_shaped_vel": -1.0,
-            "tracking_contacts_shaped_height": -1.0,
+            # "tracking_contacts_shaped_height": -1.0,
             "gait_force_sigma": 150.0,
-            "gait_vel_sigma": 10,
-            "gait_height_target": 0.25,
-            "gait_height_sigma": 10,
+            "gait_vel_sigma": 0.5,
+            # "gait_height_target": -0.35,
+            # "gait_height_sigma": 20,
             "kappa_gait_probs": 0.05,
             "command_name": "gait_command",
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_foot"),
